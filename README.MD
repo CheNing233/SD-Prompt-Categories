@@ -8,12 +8,14 @@
 
 - 可动态添加/删除分类规则
 - 分类结果自动去重
+- 集成AI分类功能，可将未分类提示词推送给AI进一步分类
+- 支持配置OpenAI API Key、Base URL、System Prompt和Model
 
 ## 使用说明
 
 1. **安装依赖**
    ```bash
-   pip install gradio
+   pip install gradio openai
    ```
 
 2. **运行程序**
@@ -25,6 +27,8 @@
    - 在输入框中输入逗号分隔的提示词
    - 点击"分类"按钮进行分类
    - 点击"保存结果"将分类结果保存到对应文件
+   - 在"AI分类配置"中，填写API Key、Base URL、System Prompt和Model，点击"保存AI配置"。
+   - 点击"AI分类"按钮，将"未分类"框中的内容发送给AI进行分类，结果将显示在"AI分类结果"框中。
 
 4. **分类管理**
    - 在"分类配置管理"中可以添加/删除分类
@@ -33,7 +37,7 @@
 ## 文件说明
 
 - `extract_*.txt`: 保存分类结果的文本文件
-- `config.json`: 分类配置信息
+- `config.json`: 包含分类配置信息和AI分类配置（API Key, Base URL, System Prompt, Model）
 - `Clothes/`, `Others/`, `Poses/`: 分类关键词目录
 
 ## 注意事项

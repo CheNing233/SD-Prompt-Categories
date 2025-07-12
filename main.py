@@ -3,6 +3,7 @@ import os
 import re
 import json
 import sys
+import openai
 
 CONFIG_FILE = "config.json"
 
@@ -26,7 +27,11 @@ def load_config():
                 {"name": "Poses", "path": "Poses"},
                 {"name": "Clothes", "path": "Clothes"},
                 {"name": "Others", "path": "Others"},
-            ]
+            ],
+            "api_key": "",
+            "base_url": "",
+            "system_prompt": "你是AI分类助手",
+            "model": "deepseek-chat"
         }
         save_config(default_config)
         return default_config
@@ -171,10 +176,10 @@ def create_ui(config):
 
         with gr.Row():
             fuzzy_checkbox = gr.Checkbox(
-                label="双向模糊匹配", info="启用时：关键词互为子串即匹配"
+                label="双向模糊匹配", info="启用时：关键词互为子串即匹配（有BUG，不建议启用）"
             )
             replace_underscore_checkbox = gr.Checkbox(
-                value=True, label="替换下划线为空格", info="启用时：下划线替换为空格"
+                value=True, label="识别空格类提示词", info="启用时：将按照空格类提示词进行字典匹配，关闭时：将按照下划线类提示词进行字典匹配"
             )
             fast_save = gr.Checkbox(
                 value=False, label="快速保存", info="启用时：保存时不查重"
@@ -182,9 +187,20 @@ def create_ui(config):
 
         with gr.Row():
             classify_btn = gr.Button("分类")
+            ai_classify_btn = gr.Button("未分类部分进行AI分类")
             save_btn = gr.Button("保存结果")
 
+        ai_result_box = gr.Textbox(label="AI分类结果", interactive=True)
         result_msg = gr.Textbox(label="操作结果", interactive=False)
+
+        with gr.Accordion("AI分类配置", open=False):
+            with gr.Row():
+                api_key_box = gr.Textbox(label="API Key", value=config.get("api_key", ""), type="password")
+                base_url_box = gr.Textbox(label="Base URL", value=config.get("base_url", ""))
+            system_prompt_box = gr.Textbox(label="System Prompt", value=config.get("system_prompt", "你是AI分类助手"))
+            model_box = gr.Textbox(label="Model", value=config.get("model", "deepseek-chat"))
+            with gr.Row():
+                save_ai_config_btn = gr.Button("保存AI配置")
 
         with gr.Accordion("分类配置管理", open=False):
             with gr.Row():
@@ -223,6 +239,51 @@ def create_ui(config):
 
         save_btn.click(
             fn=save_results, inputs=[fast_save, *output_boxes], outputs=result_msg
+        )
+
+        def save_ai_config(api_key, base_url, system_prompt, model, current_config):
+            current_config["api_key"] = api_key
+            current_config["base_url"] = base_url
+            current_config["system_prompt"] = system_prompt
+            current_config["model"] = model
+            save_config(current_config)
+            gr.Info("AI配置已保存！")
+            return current_config
+
+        def classify_with_ai(api_key, base_url, system_prompt, model, unclassified_text):
+            if not api_key or not base_url:
+                gr.Warning("API Key和Base URL不能为空！")
+                return ""
+            if not unclassified_text:
+                gr.Info("没有需要分类的内容。")
+                return ""
+
+            client = openai.OpenAI(api_key=api_key, base_url=base_url)
+
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"请将以下内容进行分类：\n{unclassified_text}"},
+                    ],
+                    stream=False
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                gr.Error(f"AI分类失败：{e}")
+                return f"错误: {e}"
+
+        save_ai_config_btn.click(
+            fn=save_ai_config,
+            inputs=[api_key_box, base_url_box, system_prompt_box, model_box, config_state],
+            outputs=[config_state]
+        )
+
+        ai_classify_btn.click(
+            fn=classify_with_ai,
+            inputs=[api_key_box, base_url_box, system_prompt_box, model_box, unclassified_box],
+            outputs=[ai_result_box]
         )
 
         def add_category_and_reload(name, path, current_config):
