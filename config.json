@@ -1,0 +1,16 @@
+{
+    "categories": [
+        {
+            "name": "Poses",
+            "path": "Poses"
+        },
+        {
+            "name": "Clothes",
+            "path": "Clothes"
+        },
+        {
+            "name": "Others",
+            "path": "Others"
+        }
+    ]
+}
